@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
 const User = require('../models/userProfile.js');
 
 router.get('/', (req, res) => {
@@ -10,7 +12,7 @@ router.get('/', (req, res) => {
   });
 });
 
-router.post('/register', (req, res) => {
+router.post('/userProfile', (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -48,7 +50,7 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email: email }).exec();
 
     if (!user) {
-      return res.status(401).json({ error: "Authentication failed." });
+      return res.status(401).json({ error: "No user found." });
     }
 
     const result = await bcrypt.compare(password, user.password);
@@ -58,19 +60,22 @@ router.post('/login', async (req, res) => {
     }
 
     // Create a JWT token
+    const jwtSecretKey = process.env.JWT_SECRET_KEY;
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      'qovdk',
+      jwtSecretKey,
       { expiresIn: '1h' } // You can adjust the expiration time
     );
 
-    return res.status(200).json({ token: token, message: "Authentication successful." });
+    // Set the token as an HTTP cookie
+    res.cookie('token', token, { httpOnly: true });
+
+    return res.status(200).json({ message: "Authentication successful." });
 
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Internal server error." });
   }
 });
-
 
 module.exports = router;
